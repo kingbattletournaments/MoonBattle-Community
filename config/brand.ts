@@ -13,7 +13,7 @@ const brandSource = {
   tagline: "Play Tournaments. Win Real Coins.",
 
   hero: {
-    typedPhrases: ["Play Tournaments", "Win Real Coins", "Join Daily Cups"],
+    typedPhrases: ["Play Tournaments", "Win Real Coins", "Join Daily Grinds"],
     subtitle:
       "{appName} is a secure tournament platform built for fair, skill-based tournaments. Download the app and start winning today.",
   },
