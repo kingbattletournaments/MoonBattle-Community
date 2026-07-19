@@ -1029,7 +1029,11 @@ export const db = {
     if (!supabase) return [];
     let q = supabase.from("game_modes").select("id, game_id, name, image_url").order("display_order").order("created_at");
     if (gameId) q = q.eq("game_id", gameId);
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) {
+      console.error("gameModes failed:", error.message, { gameId: gameId ?? null });
+      return [];
+    }
     return (data ?? []).map((r) => ({ id: r.id, gameId: r.game_id, name: r.name, imageUrl: r.image_url ?? null }));
   },
 

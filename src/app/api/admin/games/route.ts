@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to create game in database" }, { status: 500 });
     }
     invalidateAdminApiCache("games:");
+    invalidateAdminApiCache("public:games");
     return NextResponse.json(game);
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

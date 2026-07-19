@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStore } from "@/lib/store";
 import { getAdminSession } from "@/lib/admin-auth";
+import { invalidateAdminApiCache } from "@/lib/admin-api-cache";
 
 async function checkGameAccess(adminId: string, gameId: string): Promise<boolean> {
   const store = getStore();
@@ -23,6 +24,10 @@ export async function DELETE(
   const store = getStore();
   const ok = await store.deleteGame(id);
   if (!ok) return NextResponse.json({ error: "Game not found" }, { status: 404 });
+  invalidateAdminApiCache("games:");
+  invalidateAdminApiCache("public:games");
+  invalidateAdminApiCache("modes:");
+  invalidateAdminApiCache("public:modes");
   return NextResponse.json({ success: true });
 }
 
@@ -43,5 +48,7 @@ export async function PATCH(
   const store = getStore();
   const game = await store.renameGame(id, name);
   if (!game) return NextResponse.json({ error: "Game not found" }, { status: 404 });
+  invalidateAdminApiCache("games:");
+  invalidateAdminApiCache("public:games");
   return NextResponse.json(game);
 }

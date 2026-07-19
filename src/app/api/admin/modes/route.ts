@@ -111,6 +111,7 @@ export async function POST(request: Request) {
     }
 
     invalidateAdminApiCache("modes:");
+    invalidateAdminApiCache("public:modes");
     return NextResponse.json(mode);
   } catch (err) {
     return NextResponse.json(

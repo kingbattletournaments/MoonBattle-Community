@@ -16,8 +16,8 @@ function cacheMap(): Map<string, CacheEntry> {
 }
 
 export const ADMIN_API_CACHE_TTL = {
-  games: 10 * 60 * 1000,
-  modes: 10 * 60 * 1000,
+  games: 15 * 1000,
+  modes: 15 * 1000,
   presets: 5 * 60 * 1000,
   matches: 45 * 1000,
   users: 2 * 60 * 1000,

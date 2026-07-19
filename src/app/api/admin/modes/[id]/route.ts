@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStore } from "@/lib/store";
 import { getAdminSession } from "@/lib/admin-auth";
+import { invalidateAdminApiCache } from "@/lib/admin-api-cache";
 
 async function checkModeAccess(adminId: string, modeId: string): Promise<boolean> {
   const store = getStore();
@@ -23,6 +24,8 @@ export async function DELETE(
   const store = getStore();
   const ok = await store.deleteMode(id);
   if (!ok) return NextResponse.json({ error: "Mode not found" }, { status: 404 });
+  invalidateAdminApiCache("modes:");
+  invalidateAdminApiCache("public:modes");
   return NextResponse.json({ success: true });
 }
 
@@ -53,5 +56,7 @@ export async function PATCH(
   const store = getStore();
   const mode = await store.updateMode(id, updates);
   if (!mode) return NextResponse.json({ error: "Mode not found" }, { status: 404 });
+  invalidateAdminApiCache("modes:");
+  invalidateAdminApiCache("public:modes");
   return NextResponse.json(mode);
 }
