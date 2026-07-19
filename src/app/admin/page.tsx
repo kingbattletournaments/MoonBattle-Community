@@ -327,6 +327,23 @@ function AdminPageInner() {
     if (mode) patchAdminNav({ game: mode.gameId }, { replace: true });
   }, [selectedModeId, selectedGameId, modes, patchAdminNav]);
 
+  const reloadGamesAndModes = useCallback(async () => {
+    const [gRes, mRes] = await Promise.all([
+      fetch("/api/admin/games", { cache: "no-store" }),
+      fetch("/api/admin/modes", { cache: "no-store" }),
+    ]);
+    if (gRes.ok) {
+      const data = await gRes.json();
+      setGames(Array.isArray(data) ? data : []);
+      writeAdminClientCache("core:games", data, ADMIN_CLIENT_CACHE_TTL.games);
+    }
+    if (mRes.ok) {
+      const data = await mRes.json();
+      setModes(Array.isArray(data) ? data : []);
+      writeAdminClientCache("core:modes", data, ADMIN_CLIENT_CACHE_TTL.modes);
+    }
+  }, []);
+
   const fetchSessionAndCore = async (): Promise<AdminSession | null> => {
     const hadBootstrapCache = hasAdminBootstrapCache();
     if (hadBootstrapCache) setLoading(false);
@@ -340,20 +357,7 @@ function AdminPageInner() {
     setSession(sessionData.admin);
     if (!hadBootstrapCache) setLoading(true);
     try {
-      const [gRes, mRes] = await Promise.all([
-        fetch("/api/admin/games", { cache: "no-store" }),
-        fetch("/api/admin/modes", { cache: "no-store" }),
-      ]);
-      if (gRes.ok) {
-        const data = await gRes.json();
-        setGames(data);
-        writeAdminClientCache("core:games", data, ADMIN_CLIENT_CACHE_TTL.games);
-      }
-      if (mRes.ok) {
-        const data = await mRes.json();
-        setModes(data);
-        writeAdminClientCache("core:modes", data, ADMIN_CLIENT_CACHE_TTL.modes);
-      }
+      await reloadGamesAndModes();
     } catch {
       setMessage({ type: "err", text: "Failed to load data" });
     } finally {
@@ -424,6 +428,23 @@ function AdminPageInner() {
         switch (t) {
           case "games": {
             const payload: AdminTabCachePayload = {};
+            // Always refresh games/modes on force (create/rename/delete); otherwise list stays stale.
+            if (force || !selectedModeId) {
+              const [gRes, mRes] = await Promise.all([
+                fetch("/api/admin/games", { cache: "no-store" }),
+                fetch("/api/admin/modes", { cache: "no-store" }),
+              ]);
+              if (gRes.ok) {
+                const data = await gRes.json();
+                setGames(Array.isArray(data) ? data : []);
+                writeAdminClientCache("core:games", data, ADMIN_CLIENT_CACHE_TTL.games);
+              }
+              if (mRes.ok) {
+                const data = await mRes.json();
+                setModes(Array.isArray(data) ? data : []);
+                writeAdminClientCache("core:modes", data, ADMIN_CLIENT_CACHE_TTL.modes);
+              }
+            }
             if (selectedModeId) {
               const matRes = await fetch(`/api/admin/matches?modeId=${encodeURIComponent(selectedModeId)}`, { cache: "no-store" });
               if (matRes.ok) {
@@ -767,13 +788,13 @@ function AdminPageInner() {
                     gameId={selectedGameId}
                     onBack={() => patchAdminNav({ game: null, mode: null, match: null, mview: null, mstatus: null })}
                     onSelectMode={(id) => patchAdminNav({ mode: id, match: null, mview: null, mstatus: null })}
-                    onSuccess={() => { refreshCurrentTab(); showMsg("ok", "Mode created"); }}
+                    onSuccess={() => { void reloadGamesAndModes(); showMsg("ok", "Mode created"); }}
                   />
                 ) : (
                   <GamesSection
                     games={games}
                     onSelectGame={(id) => patchAdminNav({ game: id, mode: null })}
-                    onSuccess={() => { refreshCurrentTab(); showMsg("ok", "Game created"); }}
+                    onSuccess={() => { void reloadGamesAndModes(); showMsg("ok", "Game created"); }}
                     showCreateGame={!hasSpecificGameAccess}
                   />
                 )
@@ -1128,10 +1149,23 @@ function GamesSection({
   onSuccess: () => void;
   showCreateGame?: boolean;
 }) {
+  const [view, setView] = useState<"list" | "create">(
+    games.length === 0 && showCreateGame ? "create" : "list",
+  );
+  const [createRequested, setCreateRequested] = useState(false);
   const [name, setName] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (games.length === 0 && showCreateGame) {
+      setView("create");
+      setCreateRequested(false);
+    } else if (games.length > 0 && !createRequested) {
+      setView("list");
+    }
+  }, [games.length, showCreateGame, createRequested]);
 
   const handleImageChange = (file: File) => {
     setImageFile(file);
@@ -1164,7 +1198,9 @@ function GamesSection({
       if (!res.ok) throw new Error(await res.text());
       setName("");
       handleImageClear();
+      setCreateRequested(false);
       onSuccess();
+      setView("list");
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to create game");
     } finally {
@@ -1172,12 +1208,29 @@ function GamesSection({
     }
   };
 
-  return (
-    <div className="space-y-8">
-      {showCreateGame && (
+  if (view === "create" && showCreateGame) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          {games.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setCreateRequested(false);
+                setView("list");
+              }}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-500 hover:text-zinc-900 transition"
+              title="Back to Games"
+            >
+              ←
+            </button>
+          )}
+          <div>
+            <h1 className="mb-1 text-2xl font-bold text-zinc-900">Create Game</h1>
+            <p className="text-sm text-zinc-500">Add a new game to the platform</p>
+          </div>
+        </div>
         <section className="admin-panel w-full">
-          <h2 className="mb-1 text-base font-semibold text-zinc-900">Create Game</h2>
-          <p className="mb-6 text-sm text-zinc-500">Add a new game to the platform</p>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-600">Name</label>
@@ -1205,49 +1258,91 @@ function GamesSection({
             </button>
           </form>
         </section>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="mb-1 text-2xl font-bold text-zinc-900">Games</h1>
+          <p className="text-sm text-zinc-500">Click a game to manage modes and matches</p>
+        </div>
+        {showCreateGame && (
+          <button
+            type="button"
+            onClick={() => {
+              setCreateRequested(true);
+              setView("create");
+            }}
+            className="admin-btn-primary shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold"
+          >
+            + Create Game
+          </button>
+        )}
+      </div>
+
       <section className="admin-panel w-full">
-        <h2 className="mb-1 text-base font-semibold text-zinc-900">Existing Games</h2>
-        <p className="mb-5 text-sm text-zinc-500">Click a game to manage modes and matches</p>
-        <ul className="space-y-2">
-          {games.map((g) => (
-            <li
-              key={g.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelectGame(g.id)}
-              onKeyDown={(e) => e.key === "Enter" && onSelectGame(g.id)}
-              className="admin-list-item flex cursor-pointer items-center justify-between gap-2 rounded-xl px-4 py-3.5 transition hover:border-zinc-300"
-            >
-              <span className="font-medium text-zinc-700">{g.name}</span>
-              <ItemMenu
-                currentName={g.name}
-                onDelete={async () => {
-                  try {
-                    const res = await fetch(`/api/admin/games/${g.id}`, { method: "DELETE" });
-                    if (!res.ok) throw new Error(await res.text());
-                    onSuccess();
-                  } catch (err) {
-                    alert(err instanceof Error ? err.message : "Failed to delete game");
-                  }
-                }}
-                onRename={async (newName) => {
-                  try {
-                    const res = await fetch(`/api/admin/games/${g.id}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ name: newName }),
-                    });
-                    if (!res.ok) throw new Error(await res.text());
-                    onSuccess();
-                  } catch (err) {
-                    alert(err instanceof Error ? err.message : "Failed to rename game");
-                  }
-                }}
-              />
-            </li>
-          ))}
-        </ul>
+        <h2 className="mb-4 text-base font-semibold text-zinc-900">Existing Games</h2>
+        {games.length === 0 ? (
+          <p className="py-8 text-center text-sm text-zinc-500">No games configured yet</p>
+        ) : (
+          <ul className="space-y-2">
+            {games.map((g) => (
+              <li
+                key={g.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelectGame(g.id)}
+                onKeyDown={(e) => e.key === "Enter" && onSelectGame(g.id)}
+                className="admin-list-item flex cursor-pointer items-center justify-between gap-2 rounded-xl px-4 py-3.5 transition hover:border-zinc-300"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  {g.imageUrl ? (
+                    <img
+                      src={g.imageUrl}
+                      alt={g.name}
+                      className="h-12 w-12 shrink-0 rounded-lg border border-zinc-200 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-lg text-zinc-500">
+                      🎮
+                    </div>
+                  )}
+                  <span className="truncate font-medium text-zinc-700">{g.name}</span>
+                </div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ItemMenu
+                    currentName={g.name}
+                    onDelete={async () => {
+                      try {
+                        const res = await fetch(`/api/admin/games/${g.id}`, { method: "DELETE" });
+                        if (!res.ok) throw new Error(await res.text());
+                        onSuccess();
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : "Failed to delete game");
+                      }
+                    }}
+                    onRename={async (newName) => {
+                      try {
+                        const res = await fetch(`/api/admin/games/${g.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ name: newName }),
+                        });
+                        if (!res.ok) throw new Error(await res.text());
+                        onSuccess();
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : "Failed to rename game");
+                      }
+                    }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
