@@ -61,6 +61,7 @@ import {
 } from "@/lib/admin-client-cache";
 import { normalizeAdminUser } from "@/lib/admin-user";
 import { UserProfileModal } from "@/components/admin/UserProfileModal";
+import { brand } from "@config/brand";
 
 type Tab = "dashboard" | "games" | "moneyorders" | "withdrawals" | "transactions" | "admins" | "appsettings" | "users";
 type Game = { id: string; name: string; imageUrl: string | null };
@@ -649,8 +650,8 @@ function AdminPageInner() {
               </button>
               <div className="flex items-center gap-2">
                 <Image
-                  src="/app-logo.jpg"
-                  alt="Moon Battle"
+                  src={brand.images.appLogo}
+                  alt={`${brand.appName} logo`}
                   width={36}
                   height={36}
                   className="h-9 w-9 rounded-full object-cover border border-zinc-200"
