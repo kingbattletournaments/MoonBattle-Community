@@ -20,6 +20,8 @@ export function getStore() {
       addGame: (name: string, imageUrl: string | null) => db.addGame(name, imageUrl),
       deleteGame: (id: string) => db.deleteGame(id),
       renameGame: (id: string, name: string) => db.renameGame(id, name),
+      updateGame: (id: string, updates: { name?: string; imageUrl?: string | null }) =>
+        db.updateGame(id, updates),
       addGameMode: (gameId: string, name: string, imageUrl: string | null) => db.addGameMode(gameId, name, imageUrl),
       deleteMode: (id: string) => db.deleteGameMode(id),
       renameMode: (id: string, name: string) => db.renameGameMode(id, name),
@@ -170,6 +172,8 @@ export function getStore() {
     addGame: (name: string, imageUrl: string | null) => Promise.resolve(adminStore.addGame(name, imageUrl)),
     deleteGame: (id: string) => Promise.resolve(adminStore.deleteGame(id)),
     renameGame: (id: string, name: string) => Promise.resolve(adminStore.renameGame(id, name)),
+    updateGame: (id: string, updates: { name?: string; imageUrl?: string | null }) =>
+      Promise.resolve(adminStore.updateGame(id, updates)),
     addGameMode: (gameId: string, name: string, imageUrl: string | null) => Promise.resolve(adminStore.addGameMode(gameId, name, imageUrl)),
     deleteMode: (id: string) => Promise.resolve(adminStore.deleteMode(id)),
     renameMode: (id: string, name: string) => Promise.resolve(adminStore.renameMode(id, name)),

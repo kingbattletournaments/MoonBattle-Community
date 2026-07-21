@@ -41,12 +41,22 @@ export async function PATCH(
   if (!(await checkGameAccess(admin.id, id))) {
     return NextResponse.json({ error: "No access to this game" }, { status: 403 });
   }
-  const { name } = await request.json();
-  if (!name || typeof name !== "string") {
-    return NextResponse.json({ error: "name is required" }, { status: 400 });
+  const body = await request.json();
+  const { name, imageUrl } = body as { name?: string; imageUrl?: string | null };
+
+  const hasName = typeof name === "string" && name.trim().length > 0;
+  const hasImageUrl = imageUrl !== undefined;
+
+  if (!hasName && !hasImageUrl) {
+    return NextResponse.json({ error: "name or imageUrl is required" }, { status: 400 });
   }
+
+  const updates: { name?: string; imageUrl?: string | null } = {};
+  if (hasName) updates.name = name.trim();
+  if (hasImageUrl) updates.imageUrl = imageUrl;
+
   const store = getStore();
-  const game = await store.renameGame(id, name);
+  const game = await store.updateGame(id, updates);
   if (!game) return NextResponse.json({ error: "Game not found" }, { status: 404 });
   invalidateAdminApiCache("games:");
   invalidateAdminApiCache("public:games");

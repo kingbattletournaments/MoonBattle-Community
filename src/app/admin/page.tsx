@@ -1158,6 +1158,8 @@ function GamesSection({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingImageGameId, setPendingImageGameId] = useState<string | null>(null);
+  const gameImageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (games.length === 0 && showCreateGame) {
@@ -1206,6 +1208,42 @@ function GamesSection({
       alert(err instanceof Error ? err.message : "Failed to create game");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleChangeGameImage = (gameId: string) => {
+    setPendingImageGameId(gameId);
+    gameImageInputRef.current?.click();
+  };
+
+  const handleGameImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const gameId = pendingImageGameId;
+    e.target.value = "";
+    setPendingImageGameId(null);
+    if (!file || !gameId) return;
+
+    try {
+      const imageUrl = await uploadImage(file);
+      const res = await fetch(`/api/admin/games/${gameId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        let errMsg = "Failed to update game image";
+        try {
+          const errData = JSON.parse(text);
+          if (errData?.error) errMsg = errData.error;
+        } catch {
+          if (text) errMsg = text;
+        }
+        throw new Error(errMsg);
+      }
+      onSuccess();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update game image");
     }
   };
 
@@ -1265,6 +1303,13 @@ function GamesSection({
 
   return (
     <div className="space-y-6">
+      <input
+        ref={gameImageInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        className="hidden"
+        onChange={handleGameImageSelected}
+      />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="mb-1 text-2xl font-bold text-zinc-900">Games</h1>
@@ -1316,6 +1361,7 @@ function GamesSection({
                 <div onClick={(e) => e.stopPropagation()}>
                   <ItemMenu
                     currentName={g.name}
+                    onChangeImage={() => handleChangeGameImage(g.id)}
                     onDelete={async () => {
                       try {
                         const res = await fetch(`/api/admin/games/${g.id}`, { method: "DELETE" });

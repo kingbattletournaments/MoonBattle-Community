@@ -1063,10 +1063,30 @@ export const db = {
   },
 
   async renameGame(id: string, name: string): Promise<{ id: string; name: string; imageUrl: string | null } | null> {
+    return db.updateGame(id, { name });
+  },
+
+  async updateGame(
+    id: string,
+    updates: { name?: string; imageUrl?: string | null }
+  ): Promise<{ id: string; name: string; imageUrl: string | null } | null> {
     const supabase = getSupabase();
     if (!supabase) return null;
-    const { data, error } = await supabase.from("games").update({ name, updated_at: new Date().toISOString() }).eq("id", id).select("id, name, image_url").single();
-    if (error || !data) return null;
+    const payload: { name?: string; image_url?: string | null; updated_at: string } = {
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.name !== undefined) payload.name = updates.name;
+    if (updates.imageUrl !== undefined) payload.image_url = updates.imageUrl;
+    const { data, error } = await supabase
+      .from("games")
+      .update(payload)
+      .eq("id", id)
+      .select("id, name, image_url")
+      .single();
+    if (error || !data) {
+      console.error("updateGame failed:", error?.message ?? "no data returned");
+      return null;
+    }
     return { id: data.id, name: data.name, imageUrl: data.image_url ?? null };
   },
 
