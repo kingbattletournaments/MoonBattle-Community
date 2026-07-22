@@ -10,7 +10,9 @@ export async function DELETE(
   const admin = await getAdminSession();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canAccessAdminTab(admin, "admins")) return NextResponse.json({ error: "Admin tab access required" }, { status: 403 });
+  if (!admin.isMasterAdmin) return NextResponse.json({ error: "Only master admin can delete admins" }, { status: 403 });
   const { id } = await params;
+  if (admin.id === id) return NextResponse.json({ error: "You cannot delete your own account" }, { status: 403 });
   const target = await getStore().getAdminById(id);
   if (!target) return NextResponse.json({ error: "Admin not found" }, { status: 404 });
   if (target.isMasterAdmin) return NextResponse.json({ error: "Cannot delete master admin" }, { status: 403 });

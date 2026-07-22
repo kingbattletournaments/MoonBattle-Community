@@ -1930,7 +1930,16 @@ export const db = {
   },
 
   async updateAdminPassword(requestingAdminId: string, adminId: string, newPassword: string): Promise<boolean> {
-    if (requestingAdminId !== adminId) return false;
+    if (requestingAdminId !== adminId) {
+      const supabase = getSupabase();
+      if (!supabase) return false;
+      const { data: requester } = await supabase
+        .from("admins")
+        .select("is_master_admin")
+        .eq("id", requestingAdminId)
+        .single();
+      if (!requester?.is_master_admin) return false;
+    }
     const supabase = getSupabase();
     if (!supabase) return false;
     const hash = bcrypt.hashSync(newPassword, 10);

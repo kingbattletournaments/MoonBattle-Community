@@ -9,7 +9,7 @@ export async function POST(
   const admin = await getAdminSession();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  if (admin.id !== id) {
+  if (admin.id !== id && !admin.isMasterAdmin) {
     return NextResponse.json({ error: "You can only change your own password" }, { status: 403 });
   }
   const body = await request.json();

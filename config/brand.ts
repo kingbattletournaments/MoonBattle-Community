@@ -9,6 +9,7 @@ const APP_NAME = "MoonBattle";
 
 const brandSource = {
   appName: APP_NAME,
+  editionLabel: "Community",
 
   tagline: "Play Tournaments. Win Real Coins.",
 

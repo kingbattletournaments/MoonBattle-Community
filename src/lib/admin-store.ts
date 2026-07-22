@@ -1396,7 +1396,10 @@ export const adminStore = {
     return true;
   },
   updateAdminPassword: (requestingAdminId: string, adminId: string, newPassword: string): boolean => {
-    if (requestingAdminId !== adminId) return false;
+    if (requestingAdminId !== adminId) {
+      const requester = adminPermissions.find((a) => a.id === requestingAdminId);
+      if (!requester?.isMasterAdmin) return false;
+    }
     const admin = adminPermissions.find((a) => a.id === adminId);
     if (!admin) return false;
     admin.passwordHash = bcrypt.hashSync(newPassword, 10);
