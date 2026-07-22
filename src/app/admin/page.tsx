@@ -4284,16 +4284,10 @@ function AppSettingsSection({ onSuccess }: { onSuccess: () => void }) {
   const [minDepositInput, setMinDepositInput] = useState("");
   const [savingWalletLimits, setSavingWalletLimits] = useState(false);
 
-  const [depositQrUrl, setDepositQrUrl] = useState<string | null>(null);
-  const [qrFile, setQrFile] = useState<File | null>(null);
-  const [qrPreview, setQrPreview] = useState<string | null>(null);
-  const [savingQr, setSavingQr] = useState(false);
-
   const fetchSettings = useCallback(async () => {
     try {
-      const [annRes, qrRes, bonusRes, supRes, limitsRes] = await Promise.all([
+      const [annRes, bonusRes, supRes, limitsRes] = await Promise.all([
         fetch("/api/admin/announcement"),
-        fetch("/api/admin/deposit-qr"),
         fetch("/api/admin/signup-bonus"),
         fetch("/api/admin/customer-support"),
         fetch("/api/admin/wallet-limits"),
@@ -4302,10 +4296,6 @@ function AppSettingsSection({ onSuccess }: { onSuccess: () => void }) {
       if (annRes.ok) {
         const { text } = await annRes.json();
         setAnnouncementInput(text || "");
-      }
-      if (qrRes.ok) {
-        const { url } = await qrRes.json();
-        setDepositQrUrl(url);
       }
       if (bonusRes.ok) {
         const { signupBonus: bonus } = await bonusRes.json();
@@ -4328,57 +4318,6 @@ function AppSettingsSection({ onSuccess }: { onSuccess: () => void }) {
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
-
-  const handleQrFileChange = (file: File) => {
-    setQrFile(file);
-    setQrPreview(URL.createObjectURL(file));
-  };
-
-  const handleQrClear = () => {
-    setQrFile(null);
-    if (qrPreview) URL.revokeObjectURL(qrPreview);
-    setQrPreview(null);
-  };
-
-  const handleSaveQr = async () => {
-    if (qrFile) {
-      setSavingQr(true);
-      try {
-        const url = await uploadImage(qrFile);
-        const res = await fetch("/api/admin/deposit-qr", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const { url: savedUrl } = await res.json();
-        setDepositQrUrl(savedUrl);
-        handleQrClear();
-        onSuccess();
-      } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to upload QR");
-      } finally {
-        setSavingQr(false);
-      }
-    } else if (depositQrUrl) {
-      if (!confirm("Remove the deposit QR code? Users will see a placeholder.")) return;
-      setSavingQr(true);
-      try {
-        const res = await fetch("/api/admin/deposit-qr", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: null }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-        setDepositQrUrl(null);
-        onSuccess();
-      } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to remove QR");
-      } finally {
-        setSavingQr(false);
-      }
-    }
-  };
 
   const handleSaveAnnouncement = async () => {
     const trimmed = announcementInput.trim();
@@ -4482,7 +4421,7 @@ function AppSettingsSection({ onSuccess }: { onSuccess: () => void }) {
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 mb-1">App Settings</h1>
         <p className="text-zinc-500 text-sm">
-          Configure marquee announcement texts, customer support channels, signup incentives, wallet limits, and gateway QR codes.
+          Configure marquee announcement texts, customer support channels, signup incentives, and wallet limits.
         </p>
       </div>
 
@@ -4604,54 +4543,6 @@ function AppSettingsSection({ onSuccess }: { onSuccess: () => void }) {
             >
               {savingWalletLimits ? "Saving..." : "Save Wallet Limits"}
             </button>
-          </div>
-        </section>
-
-        <section className="admin-panel w-full space-y-4">
-          <div>
-            <h3 className="text-md font-bold text-zinc-600">Manual Deposit QR Code</h3>
-            <p className="text-xs text-zinc-500 mt-1">UPI barcode scanned by users to deposit money manually.</p>
-          </div>
-          <div className="flex flex-col gap-3">
-            <label className="admin-input flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed p-4 transition hover:border-zinc-400">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleQrFileChange(f);
-                }}
-              />
-              {qrPreview || depositQrUrl ? (
-                <img
-                  src={qrPreview ?? depositQrUrl ?? ""}
-                  alt="Deposit QR"
-                  className="max-h-24 max-w-24 rounded-lg object-contain"
-                />
-              ) : (
-                <span className="text-xs text-zinc-500">Click to upload UPI QR code</span>
-              )}
-            </label>
-            <div className="flex gap-2">
-              {qrFile && (
-                <button
-                  type="button"
-                  onClick={handleQrClear}
-                  className="rounded-lg bg-zinc-50 border border-zinc-200 px-3 py-1.5 text-xs text-zinc-600"
-                >
-                  Clear
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleSaveQr}
-                disabled={savingQr || (!qrFile && !depositQrUrl)}
-                className="admin-btn-primary rounded-lg px-3 py-1.5 text-xs font-semibold text-zinc-900 disabled:opacity-50"
-              >
-                {savingQr ? "Saving..." : qrFile ? "Upload & Update" : "Remove QR"}
-              </button>
-            </div>
           </div>
         </section>
       </div>

@@ -3,6 +3,7 @@
 import { useRef, useCallback, useState } from "react";
 import { formatMatchDateTime } from "@/lib/format-match-datetime";
 import { CoinAmount, CoinIcon } from "@/components/ui/CoinIcon";
+import { brand } from "@config/brand";
 
 export type MatchType = "solo" | "duo" | "squad";
 export type RankReward = { fromRank: number; toRank: number; coins: number };
@@ -213,8 +214,8 @@ export function AdminMatchCard({
 
       <div className="flex items-center gap-3 p-4 border-b border-zinc-200/60">
         <img
-          src="/images/app-icon.png"
-          alt="Logo"
+          src={brand.images.appLogo}
+          alt={`${brand.appName} logo`}
           className="w-10 h-10 object-cover rounded-lg border border-zinc-200 shrink-0"
         />
         <div className="min-w-0 flex-1">
