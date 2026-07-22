@@ -84,8 +84,8 @@ const brandSource = {
   },
 
   footer: {
+    /** Organizer copyright line only — MoonStack platform badge is fixed in src/lib/platform-ref.ts */
     copyright: "{appName}. All rights reserved.",
-    adminPath: "/admin/login",
   },
 
   meta: {

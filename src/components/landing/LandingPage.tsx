@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { brand } from "@config/brand";
+import { PlatformFooterBadge } from "@/components/platform/PlatformFooterBadge";
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -141,9 +142,7 @@ export default function LandingPage() {
 
       <footer className="landing-footer">
         <div className="landing-footer-inner">
-          <p>
-            <a href={brand.footer.adminPath}>Admin Login</a>
-          </p>
+          <PlatformFooterBadge />
           <p>© {new Date().getFullYear()} {brand.footer.copyright}</p>
         </div>
       </footer>
