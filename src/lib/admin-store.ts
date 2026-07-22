@@ -1395,7 +1395,8 @@ export const adminStore = {
     adminPermissions.splice(i, 1);
     return true;
   },
-  updateAdminPassword: (adminId: string, newPassword: string): boolean => {
+  updateAdminPassword: (requestingAdminId: string, adminId: string, newPassword: string): boolean => {
+    if (requestingAdminId !== adminId) return false;
     const admin = adminPermissions.find((a) => a.id === adminId);
     if (!admin) return false;
     admin.passwordHash = bcrypt.hashSync(newPassword, 10);

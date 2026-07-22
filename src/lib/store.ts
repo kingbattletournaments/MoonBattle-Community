@@ -157,7 +157,8 @@ export function getStore() {
       createAdmin: (adminname: string, password: string, opts: { tabAccess: Partial<AdminTabAccess> }) =>
         db.createAdmin(adminname, password, opts),
       deleteAdmin: (id: string) => db.deleteAdmin(id),
-      updateAdminPassword: (id: string, newPassword: string) => db.updateAdminPassword(id, newPassword),
+      updateAdminPassword: (requestingAdminId: string, id: string, newPassword: string) =>
+        db.updateAdminPassword(requestingAdminId, id, newPassword),
       getDashboardStats: () => db.getDashboardStats(),
     };
   }
@@ -253,7 +254,8 @@ export function getStore() {
     createAdmin: (adminname: string, password: string, opts: { tabAccess: Partial<AdminTabAccess> }) =>
       Promise.resolve(adminStore.createAdmin(adminname, password, opts)),
     deleteAdmin: (id: string) => Promise.resolve(adminStore.deleteAdmin(id)),
-    updateAdminPassword: (id: string, newPassword: string) => Promise.resolve(adminStore.updateAdminPassword(id, newPassword)),
+    updateAdminPassword: (requestingAdminId: string, id: string, newPassword: string) =>
+      Promise.resolve(adminStore.updateAdminPassword(requestingAdminId, id, newPassword)),
     users: () => Promise.resolve(adminStore.users()),
     usersPaginated: (opts: Parameters<typeof adminStore.usersPaginated>[0]) =>
       Promise.resolve(adminStore.usersPaginated(opts)),

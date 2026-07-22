@@ -229,6 +229,7 @@ function AdminPageInner() {
   }, [router]);
 
   const [session, setSession] = useState<AdminSession | null>(null);
+  const [showOwnPasswordModal, setShowOwnPasswordModal] = useState(false);
   const selectedGameId = navParams.game;
   const selectedModeId = navParams.mode;
   const tab = useMemo((): Tab => {
@@ -683,6 +684,13 @@ function AdminPageInner() {
                 </div>
                 <button
                   type="button"
+                  onClick={() => setShowOwnPasswordModal(true)}
+                  className="flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 px-4 text-sm font-semibold transition"
+                >
+                  Change Password
+                </button>
+                <button
+                  type="button"
                   onClick={handleLogout}
                   className="admin-btn-primary flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition"
                 >
@@ -819,6 +827,7 @@ function AdminPageInner() {
               
               {tab === "admins" && session && canAccessAdminTab(session, "admins") && (
                 <CreateAdminSection
+                  currentAdminId={session.id}
                   onSuccess={() => { refreshCurrentTab(); showMsg("ok", "Admin created"); }}
                 />
               )}
@@ -843,6 +852,13 @@ function AdminPageInner() {
           )}
         </main>
       </div>
+      {showOwnPasswordModal && session && (
+        <ChangeOwnPasswordModal
+          adminId={session.id}
+          adminname={session.adminname}
+          onClose={() => setShowOwnPasswordModal(false)}
+        />
+      )}
     </div>
   );
 }
@@ -3191,12 +3207,104 @@ function enabledTabIds(tabAccess: AdminTabAccess): AdminTabId[] {
   return ALL_ADMIN_TAB_IDS.filter((id) => tabAccess[id]);
 }
 
+function ChangeOwnPasswordModal({
+  adminId,
+  adminname,
+  onClose,
+}: {
+  adminId: string;
+  adminname: string;
+  onClose: () => void;
+}) {
+  const [newPassword, setNewPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [onClose]);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/admins/${adminId}/password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to change password");
+      }
+      setNewPassword("");
+      alert("Password updated successfully");
+      onClose();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to change password");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} aria-hidden />
+      <div
+        ref={ref}
+        className="relative z-10 w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl"
+      >
+        <h2 className="text-lg font-semibold text-zinc-900">Change Password</h2>
+        <p className="mt-1 text-sm text-zinc-500">Update password for {adminname}</p>
+        <form onSubmit={handleChangePassword} className="mt-6 flex flex-col gap-3">
+          <input
+            type="password"
+            minLength={6}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="New password (min 6 chars)"
+            className="admin-input w-full rounded-lg px-4 py-3 text-sm"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || !newPassword || newPassword.length < 6}
+              className="admin-btn-primary flex-1 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {submitting ? "..." : "Update Password"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function AdminProfileModal({
   admin,
+  currentAdminId,
   onClose,
   onDelete,
 }: {
   admin: AdminListItem;
+  currentAdminId: string;
   onClose: () => void;
   onDelete: () => void;
 }) {
@@ -3327,24 +3435,28 @@ function AdminProfileModal({
           </dl>
 
           <div className="mt-6 sm:mt-8 space-y-4 border-t border-zinc-200 pt-6">
-            <form onSubmit={handleChangePassword} className="flex flex-col gap-3 sm:flex-row sm:gap-2">
-              <input
-                type="password"
-                minLength={6}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="New password (min 6 chars)"
-                className="admin-input w-full flex-1 rounded-lg px-4 py-3 sm:py-2 text-sm min-h-[44px] sm:min-h-0"
-              />
-              <button
-                type="submit"
-                disabled={submitting || !newPassword || newPassword.length < 6}
-                className="admin-btn-primary w-full sm:w-auto rounded-lg px-4 py-3 sm:py-2 text-sm font-medium disabled:opacity-50 min-h-[44px] sm:min-h-0 shrink-0"
-              >
-                {submitting ? "..." : "Change Password"}
-              </button>
-            </form>
-            {!admin.isMasterAdmin && (
+            {admin.id === currentAdminId ? (
+              <form onSubmit={handleChangePassword} className="flex flex-col gap-3 sm:flex-row sm:gap-2">
+                <input
+                  type="password"
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password (min 6 chars)"
+                  className="admin-input w-full flex-1 rounded-lg px-4 py-3 sm:py-2 text-sm min-h-[44px] sm:min-h-0"
+                />
+                <button
+                  type="submit"
+                  disabled={submitting || !newPassword || newPassword.length < 6}
+                  className="admin-btn-primary w-full sm:w-auto rounded-lg px-4 py-3 sm:py-2 text-sm font-medium disabled:opacity-50 min-h-[44px] sm:min-h-0 shrink-0"
+                >
+                  {submitting ? "..." : "Change Password"}
+                </button>
+              </form>
+            ) : (
+              <p className="text-xs text-zinc-500">Password can only be changed by the account owner.</p>
+            )}
+            {admin.id !== currentAdminId && !admin.isMasterAdmin && (
               <button
                 type="button"
                 onClick={handleDelete}
@@ -3354,8 +3466,8 @@ function AdminProfileModal({
                 {deleting ? "..." : "Delete Admin"}
               </button>
             )}
-            {admin.isMasterAdmin && (
-              <p className="text-xs text-zinc-500">Master admin cannot be deleted. Only password can be changed.</p>
+            {admin.isMasterAdmin && admin.id !== currentAdminId && (
+              <p className="text-xs text-zinc-500">Master admin cannot be deleted.</p>
             )}
           </div>
         </div>
@@ -3365,8 +3477,10 @@ function AdminProfileModal({
 }
 
 function CreateAdminSection({
+  currentAdminId,
   onSuccess,
 }: {
+  currentAdminId: string;
   onSuccess: () => void;
 }) {
   const [adminname, setAdminname] = useState("");
@@ -3518,6 +3632,7 @@ function CreateAdminSection({
       {selectedAdmin && (
         <AdminProfileModal
           admin={selectedAdmin}
+          currentAdminId={currentAdminId}
           onClose={() => setSelectedAdmin(null)}
           onDelete={() => {
             refreshAdmins();

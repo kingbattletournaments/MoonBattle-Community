@@ -1929,7 +1929,8 @@ export const db = {
     return !error;
   },
 
-  async updateAdminPassword(adminId: string, newPassword: string): Promise<boolean> {
+  async updateAdminPassword(requestingAdminId: string, adminId: string, newPassword: string): Promise<boolean> {
+    if (requestingAdminId !== adminId) return false;
     const supabase = getSupabase();
     if (!supabase) return false;
     const hash = bcrypt.hashSync(newPassword, 10);
